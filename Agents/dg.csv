@@ -1,0 +1,9 @@
+Fecha,Hora,Proyecto,Módulo/Componente,Tarea Realizada,Descripción Detallada,Estado,Tiempo Estimado (hrs),Tiempo Real (hrs),Observaciones
+2025-06-01,09:00,FB,Frontend,Configuración Inicial,Inicialización del proyecto con create-next-app y configuración de entorno de desarrollo,Completado,2.0,2,Ninguna
+2025-06-02,10:00,FB,Frontend,Implementación de Página Principal,Desarrollo de la página principal utilizando Next.js y diseño responsivo,En Proceso,4.0,3,Requiere ajustes en diseño móvil
+2025-06-03,11:00,BACKFB,Backend,Configuración de Entorno,Creación de entorno virtual y configuración de dependencias en requirements.txt,Completado,1.5,1.5,Ninguna
+2025-06-04,14:00,BACKFB,Backend,Desarrollo de API de Autenticación,Implementación de endpoints para registro y login de usuarios,En Proceso,3.0,2,Falta integración con base de datos
+2025-06-05,15:00,FB,Frontend,Integración con API,Conexión del frontend con la API de autenticación para manejo de sesiones,No Iniciado,2.0,,Pendiente de finalización del backend
+2025-06-06,13:00,BACKFB,Backend,Pruebas Unitarias,Escritura de pruebas unitarias para los endpoints de autenticación,No Iniciado,2.0,,Requiere finalización de endpoints
+2025-06-07,10:00,FB,Frontend,Optimización de Rendimiento,Mejoras en la carga de componentes y optimización de imágenes,No Iniciado,1.5,,Pendiente de pruebas
+2025-06-08,09:30,BACKFB,Backend,Documentación,Redacción de documentación técnica para la API,No Iniciado,2.0,,Programado para la próxima semana

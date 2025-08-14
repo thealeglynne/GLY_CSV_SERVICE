@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+numpy
+pandas
+python-dotenv
+langchain
+langchain-groq
+openpyxl
+xlrd

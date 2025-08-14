@@ -1,0 +1,50 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+.env/
+
+# Archivos de configuración privada
+*.env
+.env.*
+
+# Archivos de compilación/intermediarios
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+
+# Archivos de logs
+*.log
+
+# Archivos temporales
+*.tmp
+*.temp
+tmp/
+temp/
+*.swp
+*.swo
+
+# Datos temporales de ejecución
+*.sqlite3
+instance/
+uploads/
+.cache/
+.ipynb_checkpoints
+
+# Carpetas generadas por IDEs
+.vscode/
+.idea/
+
+# Archivos de sistemas operativos
+.DS_Store
+Thumbs.db
+
+# Configuración de uvicorn y cache de FastAPI
+*.pid
+
+# Directorios de build y distribución
+build/
+dist/
+*.egg-info/
