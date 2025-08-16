@@ -115,45 +115,39 @@ def analizar_matriz(fuente, descripcion_db="", temperature=0.3):
     prompt_template = PromptTemplate(
     input_variables=["descripcion_db", "perfil", "contenido"],
     template="""
-Eres un experto senior en análisis de datos estratégicos y minería de patrones complejos.
+Eres un analista senior con visión contable, administrativa y de gestión empresarial.
+Tu objetivo es interpretar datos para apoyar decisiones estratégicas y operativas, detectando problemas, oportunidades y patrones de negocio.
+No uses asteriscos, guiones ni caracteres especiales para viñetas. Usa únicamente puntuación y redacción fluida.
+
 Dispones de:
-- Descripción de la base de datos: {descripcion_db}
-- Perfil técnico de la matriz: {perfil}
-- Resumen de contenido y patrones básicos: {contenido}
+Descripción de la base de datos: {descripcion_db}
+Perfil técnico de la matriz: {perfil}
+Resumen de contenido y patrones básicos: {contenido}
 
-Genera un informe **extremadamente detallado** con la siguiente estructura:
+Genera un informe muy detallado con la siguiente estructura:
 
-1. **Hallazgos clave**  
-   - Resumen ejecutivo con los descubrimientos más importantes.  
-   - Incluye tanto hallazgos técnicos como estratégicos.
+1. Hallazgos clave
+Describe de forma narrativa los descubrimientos más importantes. Incluye interpretaciones prácticas, por ejemplo: si las ventas reportadas no coinciden con el ingreso total registrado, señala la discrepancia y su posible origen.
 
-2. **Calidad de datos y problemas detectados**  
-   - Análisis profundo de valores nulos, duplicados, inconsistencias y errores posibles.  
-   - Impacto de estos problemas en el análisis.
+2. Calidad de datos y problemas detectados
+Evalúa si existen errores como registros faltantes, duplicados o incongruencias. Explica cómo afectan la toma de decisiones o la contabilidad.
 
-3. **Patrones, tendencias y correlaciones (SECCIÓN EXTENDIDA)**  
-   - Busca tendencias temporales (picos, caídas, estacionalidad, ciclos).  
-   - Identifica correlaciones relevantes entre variables numéricas y categóricas.  
-   - Detecta interacciones entre variables que podrían no ser evidentes.  
-   - Explica posibles causas detrás de los patrones observados.  
-   - Si hay fechas, analiza estacionalidad y eventos atípicos.  
-   - Si hay datos regionales, compara entre regiones y busca relaciones con otros atributos.  
-   - Formula hipótesis fundamentadas basadas en los datos.
-   - Incluye ejemplos concretos de registros que representen estos patrones.
+3. Patrones, tendencias y correlaciones
+Explica tendencias temporales, variaciones estacionales, correlaciones entre variables y cualquier comportamiento atípico. Aporta ejemplos claros y explica su posible significado para el negocio.
 
-4. **Anomalías y outliers relevantes**  
-   - Ejemplos específicos con valores concretos.  
-   - Posibles explicaciones o hipótesis.
+4. Anomalías y casos especiales
+Identifica datos que no encajan en los patrones esperados. Describe qué podrían significar, por ejemplo: ventas altas pero ingresos bajos, o inventario reducido sin ventas registradas.
 
-5. **Riesgos y oportunidades de negocio**  
-   - Interpreta los hallazgos con un enfoque práctico.
+5. Riesgos y oportunidades
+Analiza la información con un enfoque empresarial, identificando riesgos financieros, operativos o de mercado, así como oportunidades para optimizar ingresos o reducir costos.
 
-6. **Recomendaciones estratégicas y operativas**  
-   - Sugerencias accionables basadas en los datos.
+6. Recomendaciones estratégicas y operativas
+Ofrece sugerencias accionables. Prioriza soluciones prácticas, como mejorar control de inventarios, revisar políticas de precios o auditar transacciones.
 
-Responde en formato Markdown con subtítulos claros y explicaciones narrativas ricas en detalles.
+Responde en formato de texto claro, redactado como un informe profesional, sin viñetas y con párrafos completos.
 """
 )
+
 
     llm = ChatGroq(model_name="llama3-70b-8192", temperature=temperature, api_key=GROQ_API_KEY)
     prompt = prompt_template.format(
