@@ -73,13 +73,13 @@ def perfilar_matriz(df, sample_rows=5, sample_cols=10):
 # ANÁLISIS DE CONTENIDO
 # =========================
 def analisis_contenido(df, sample_size=20):
-    """Genera un resumen más compacto del contenido para análisis estratégico."""
+    """Genera un resumen enriquecido del contenido para análisis estratégico."""
     contenido = {}
 
-    # Muestra aleatoria (limitada para no saturar tokens)
+    # Muestra aleatoria
     contenido["muestra"] = df.sample(min(sample_size, len(df)), random_state=42).to_dict(orient="records")
 
-    # Distribuciones por columnas numéricas (resumidas)
+    # Distribuciones numéricas
     num_cols = df.select_dtypes(include=[np.number]).columns
     distribuciones = {}
     for col in num_cols:
@@ -88,16 +88,50 @@ def analisis_contenido(df, sample_size=20):
             "max": float(df[col].max()),
             "media": float(df[col].mean()),
             "mediana": float(df[col].median()),
-            "desviacion": float(df[col].std())
+            "desviacion": float(df[col].std()),
+            "q25": float(df[col].quantile(0.25)),
+            "q75": float(df[col].quantile(0.75)),
+            "outliers_estimados": int(((df[col] < (df[col].quantile(0.25) - 1.5*df[col].std())) | 
+                                       (df[col] > (df[col].quantile(0.75) + 1.5*df[col].std()))).sum())
         }
     contenido["distribuciones_numericas"] = distribuciones
 
-    # Distribuciones por columnas categóricas (solo top 5 valores)
+    # Distribuciones categóricas
     cat_cols = df.select_dtypes(include=["object", "string"]).columns
     distrib_cat = {}
     for col in cat_cols:
-        distrib_cat[col] = dict(list(df[col].value_counts().head(5).items()))
+        distrib_cat[col] = {
+            "top5": dict(df[col].value_counts().head(5)),
+            "unicos": int(df[col].nunique()),
+            "moda": str(df[col].mode().iloc[0]) if not df[col].mode().empty else None
+        }
     contenido["distribuciones_categoricas"] = distrib_cat
+
+    # Correlaciones entre numéricas
+    if len(num_cols) > 1:
+        corr_matrix = df[num_cols].corr().round(3).to_dict()
+        contenido["correlaciones_numericas"] = corr_matrix
+
+    # Relaciones entre categóricas y numéricas (media por categoría)
+    relaciones = {}
+    for cat in cat_cols:
+        for num in num_cols:
+            relaciones[f"{cat}__vs__{num}"] = df.groupby(cat)[num].mean().to_dict()
+    contenido["relaciones_cat_num"] = relaciones
+
+    # Si hay columna tipo fecha → analizar temporalidad
+    fechas = df.select_dtypes(include=["datetime", "datetimetz"]).columns
+    if len(fechas) > 0:
+        temporalidad = {}
+        for col in fechas:
+            df_temp = df.copy()
+            df_temp["año"] = df[col].dt.year
+            df_temp["mes"] = df[col].dt.month
+            temporalidad[col] = {
+                "conteo_por_año": df_temp["año"].value_counts().sort_index().to_dict(),
+                "conteo_por_mes": df_temp["mes"].value_counts().sort_index().to_dict(),
+            }
+        contenido["temporalidad"] = temporalidad
 
     return contenido
 
@@ -115,38 +149,62 @@ def analizar_matriz(fuente, descripcion_db="", temperature=0.3):
     prompt_template = PromptTemplate(
     input_variables=["descripcion_db", "perfil", "contenido"],
     template="""
-Eres un analista senior con visión contable, administrativa y de gestión empresarial.
-Tu objetivo es interpretar datos para apoyar decisiones estratégicas y operativas, detectando problemas, oportunidades y patrones de negocio.
-No uses asteriscos, guiones ni caracteres especiales para viñetas. Usa únicamente puntuación y redacción fluida.
+Eres un experto senior en análisis de datos estratégicos, minería de patrones complejos e inteligencia de negocio.
+Tu misión no es solo describir los datos, sino extraer inferencias útiles, hipótesis contrafactuales, narrativas con ejemplos concretos y propuestas de valor aplicables.
 
 Dispones de:
-Descripción de la base de datos: {descripcion_db}
-Perfil técnico de la matriz: {perfil}
-Resumen de contenido y patrones básicos: {contenido}
+- Descripción de la base de datos: {descripcion_db}
+- Perfil técnico de la matriz: {perfil}
+- Resumen de contenido y patrones básicos: {contenido}
 
-Genera un informe muy detallado con la siguiente estructura:
+Genera un informe extremadamente detallado, con un tono consultivo y narrativo siguiendo la estructura:
 
 1. Hallazgos clave
-Describe de forma narrativa los descubrimientos más importantes. Incluye interpretaciones prácticas, por ejemplo: si las ventas reportadas no coinciden con el ingreso total registrado, señala la discrepancia y su posible origen.
+   - Resumen ejecutivo con los descubrimientos más importantes.
+   - Incluye tanto hallazgos técnicos como estratégicos.
+   - Señala también qué no está en los datos pero podría ser relevante (vacíos de información).
+   - Aporta ejemplos ilustrativos de casos representativos como microhistorias o perfiles tipo de registros.
 
 2. Calidad de datos y problemas detectados
-Evalúa si existen errores como registros faltantes, duplicados o incongruencias. Explica cómo afectan la toma de decisiones o la contabilidad.
+   - Análisis profundo de valores nulos, duplicados, inconsistencias y errores posibles.
+   - Impacto de estos problemas en el análisis.
+   - Explica qué nuevos datos sería útil recolectar.
+   - Incluye ejemplos numéricos o registros ficticios que evidencien estas limitaciones.
 
-3. Patrones, tendencias y correlaciones
-Explica tendencias temporales, variaciones estacionales, correlaciones entre variables y cualquier comportamiento atípico. Aporta ejemplos claros y explica su posible significado para el negocio.
+3. Patrones, tendencias y correlaciones (Sección Extendida)
+   - Busca tendencias temporales como picos, caídas, estacionalidad o ciclos.
+   - Identifica correlaciones relevantes entre variables numéricas y categóricas.
+   - Detecta interacciones entre variables que podrían no ser evidentes.
+   - Explica posibles causas detrás de los patrones observados.
+   - Si hay fechas, analiza estacionalidad y eventos atípicos.
+   - Si hay datos regionales, compara entre regiones y busca relaciones con otros atributos.
+   - Formula hipótesis fundamentadas basadas en los datos.
+   - Agrega escenarios contrafactuales o simulaciones narrativas con aproximaciones numéricas, por ejemplo: ¿qué pasaría si un factor cambiara, como duplicar un recurso, priorizar un segmento o alterar una política?
+   - Incluye ejemplos concretos de registros que representen estos patrones.
 
-4. Anomalías y casos especiales
-Identifica datos que no encajan en los patrones esperados. Describe qué podrían significar, por ejemplo: ventas altas pero ingresos bajos, o inventario reducido sin ventas registradas.
+4. Anomalías y outliers relevantes
+   - Ejemplos específicos con valores concretos.
+   - Posibles explicaciones o hipótesis.
+   - Reflexiona si esas anomalías pueden representar oportunidades ocultas o amenazas emergentes.
+   - Narra al menos un caso puntual como ejemplo de anomalía.
 
-5. Riesgos y oportunidades
-Analiza la información con un enfoque empresarial, identificando riesgos financieros, operativos o de mercado, así como oportunidades para optimizar ingresos o reducir costos.
+5. Riesgos y oportunidades de negocio
+   - Interpreta los hallazgos con un enfoque práctico.
+   - Incluye escenarios prospectivos, como qué pasaría si la tendencia continúa, se acelera o cambia.
+   - Identifica vacíos de mercado o segmentos poco explorados.
+   - Relaciona patrones con posibles decisiones estratégicas reales.
 
 6. Recomendaciones estratégicas y operativas
-Ofrece sugerencias accionables. Prioriza soluciones prácticas, como mejorar control de inventarios, revisar políticas de precios o auditar transacciones.
+   - Sugerencias accionables basadas en los datos.
+   - Propón acciones experimentales como pruebas A/B, pilotos o nuevos indicadores de desempeño.
+   - Agrega recomendaciones para capturar valor más allá de lo explícito en los datos.
+   - Cierra con una propuesta visionaria que vaya más allá de la base de datos actual.
 
-Responde en formato de texto claro, redactado como un informe profesional, sin viñetas y con párrafos completos.
+NO QUIERO QUE UTILICES CARACTREES ESPECIALES NADA DE NUMERALES ASTERISCOS IGUALES GINES SOLO TECTOY SIGNOS DE PUNTUACION COMAT ETC 
+Responde en formato Markdown con subtítulos claros, ejemplos narrativos, simulaciones cuantitativas aproximadas y un estilo consultivo que combine rigor técnico con narración estratégica.
 """
 )
+
 
 
     llm = ChatGroq(model_name="llama3-70b-8192", temperature=temperature, api_key=GROQ_API_KEY)
