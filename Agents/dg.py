@@ -207,7 +207,7 @@ Responde en formato Markdown con subtítulos claros, ejemplos narrativos, simula
 
 
 
-    llm = ChatGroq(model_name="llama3-70b-8192", temperature=temperature, api_key=GROQ_API_KEY)
+    llm = ChatGroq(model_name="llama-3.3-70b-versatile", temperature=temperature, api_key=GROQ_API_KEY)
     prompt = prompt_template.format(
         descripcion_db=descripcion_db,
         perfil=resumen_perfil,
