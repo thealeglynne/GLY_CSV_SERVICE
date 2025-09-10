@@ -17,10 +17,10 @@ if not GROQ_API_KEY:
     raise ValueError("⚠️ Debes definir GROQ_API_KEY en .env")
 
 # =========================
-# LECTURA DE MATRIZ
+# LECTURA DE DATOS
 # =========================
 def cargar_matriz(fuente, sheet_name=0):
-    """Carga CSV, Excel o JSON a DataFrame."""
+    """Carga CSV, Excel, JSON o DataFrame a un DataFrame de pandas."""
     if isinstance(fuente, pd.DataFrame):
         return fuente
 
@@ -32,113 +32,131 @@ def cargar_matriz(fuente, sheet_name=0):
 
     if isinstance(fuente, str) and os.path.isfile(fuente):
         ext = os.path.splitext(fuente)[1].lower()
-        if ext in [".csv"]:
+        if ext == ".csv":
             return pd.read_csv(fuente)
         elif ext in [".xlsx", ".xls"]:
             return pd.read_excel(fuente, sheet_name=sheet_name)
-        elif ext in [".json"]:
-            return pd.DataFrame(json.load(open(fuente)))
+        elif ext == ".json":
+            return pd.DataFrame(json.load(open(fuente, encoding="utf-8")))
         else:
             raise ValueError(f"Formato no soportado: {ext}")
 
-    if isinstance(fuente, dict) or isinstance(fuente, list):
+    if isinstance(fuente, (dict, list)):
         return pd.DataFrame(fuente)
 
     raise ValueError("No se pudo interpretar la fuente de datos.")
 
 # =========================
-# PERFILADO DE MATRIZ
+# PERFILADO AVANZADO
 # =========================
-def perfilar_matriz(df, sample_rows=5, sample_cols=10):
+def perfilar_matriz(df):
+    """Genera un perfil detallado de la matriz de datos."""
     perfil = {
         "shape": df.shape,
         "dtypes": df.dtypes.astype(str).to_dict(),
-        "missing": df.isnull().sum().to_dict(),
-        "duplicates": int(df.duplicated().sum()),
+        "missing_count": df.isnull().sum().to_dict(),
+        "missing_percent": (df.isnull().mean()*100).round(2).to_dict(),
+        "duplicated_rows": int(df.duplicated().sum()),
+        "unique_counts": df.nunique().to_dict(),
+        "sample": df.head(5).to_dict(orient="records")
     }
 
+    # Columnas numéricas
     num_cols = df.select_dtypes(include=[np.number]).columns
     if len(num_cols) > 0:
-        perfil["numeric_summary"] = df[num_cols].describe().T.to_dict()
+        perfil["numeric_summary"] = df[num_cols].describe(include="all").T.to_dict()
+        # Outliers con IQR
+        outliers = {}
+        for col in num_cols:
+            Q1 = df[col].quantile(0.25)
+            Q3 = df[col].quantile(0.75)
+            IQR = Q3 - Q1
+            outliers[col] = int(((df[col] < Q1 - 1.5*IQR) | (df[col] > Q3 + 1.5*IQR)).sum())
+        perfil["numeric_outliers"] = outliers
 
-    cat_cols = df.select_dtypes(include=["object", "string"]).columns
-    perfil["categorical_tops"] = {
-        col: df[col].value_counts().head(5).to_dict() for col in cat_cols
-    }
+    # Columnas categóricas
+    cat_cols = df.select_dtypes(include=["object", "string", "category"]).columns
+    if len(cat_cols) > 0:
+        cat_summary = {}
+        for col in cat_cols:
+            cat_summary[col] = {
+                "top_values": df[col].value_counts().head(5).to_dict(),
+                "unique": int(df[col].nunique()),
+                "mode": df[col].mode().iloc[0] if not df[col].mode().empty else None
+            }
+        perfil["categorical_summary"] = cat_summary
 
-    perfil["preview"] = df.head(sample_rows).iloc[:, :sample_cols].to_dict(orient="list")
     return perfil
 
 # =========================
-# ANÁLISIS DE CONTENIDO
+# ANÁLISIS DE DATOS
 # =========================
-def analisis_contenido(df, sample_size=20):
-    """Genera un resumen enriquecido del contenido para análisis estratégico."""
+def analisis_contenido(df):
     contenido = {}
 
-    # Muestra aleatoria
-    contenido["muestra"] = df.sample(min(sample_size, len(df)), random_state=42).to_dict(orient="records")
+    # Detectar tipos avanzados
+    contenido["tipos"] = df.dtypes.astype(str).to_dict()
+    contenido["missing_summary"] = {
+        "count": df.isnull().sum().to_dict(),
+        "percent": (df.isnull().mean()*100).round(2).to_dict()
+    }
 
-    # Distribuciones numéricas
+    # Estadísticas numéricas
     num_cols = df.select_dtypes(include=[np.number]).columns
-    distribuciones = {}
+    contenido["numerical_analysis"] = {}
     for col in num_cols:
-        distribuciones[col] = {
-            "min": float(df[col].min()),
-            "max": float(df[col].max()),
-            "media": float(df[col].mean()),
-            "mediana": float(df[col].median()),
-            "desviacion": float(df[col].std()),
-            "q25": float(df[col].quantile(0.25)),
-            "q75": float(df[col].quantile(0.75)),
-            "outliers_estimados": int(
-                ((df[col] < (df[col].quantile(0.25) - 1.5*df[col].std())) | 
-                 (df[col] > (df[col].quantile(0.75) + 1.5*df[col].std()))).sum()
-            )
+        serie = df[col].dropna()
+        contenido["numerical_analysis"][col] = {
+            "min": serie.min(),
+            "max": serie.max(),
+            "mean": serie.mean(),
+            "median": serie.median(),
+            "std": serie.std(),
+            "q25": serie.quantile(0.25),
+            "q75": serie.quantile(0.75),
+            "missing": int(df[col].isnull().sum()),
         }
-    contenido["distribuciones_numericas"] = distribuciones
 
-    # Distribuciones categóricas
-    cat_cols = df.select_dtypes(include=["object", "string"]).columns
-    distrib_cat = {}
+    # Análisis categórico
+    cat_cols = df.select_dtypes(include=["object", "string", "category"]).columns
+    contenido["categorical_analysis"] = {}
     for col in cat_cols:
-        distrib_cat[col] = {
-            "top5": dict(df[col].value_counts().head(5)),
-            "unicos": int(df[col].nunique()),
-            "moda": str(df[col].mode().iloc[0]) if not df[col].mode().empty else None
+        conteo = df[col].value_counts()
+        contenido["categorical_analysis"][col] = {
+            "top5": dict(conteo.head(5)),
+            "unique": int(df[col].nunique()),
+            "missing": int(df[col].isnull().sum())
         }
-    contenido["distribuciones_categoricas"] = distrib_cat
 
-    # Correlaciones entre numéricas
+    # Correlaciones numéricas
     if len(num_cols) > 1:
-        corr_matrix = df[num_cols].corr().round(3).to_dict()
-        contenido["correlaciones_numericas"] = corr_matrix
+        contenido["correlations"] = df[num_cols].corr().round(3).to_dict()
 
-    # Relaciones entre categóricas y numéricas (media por categoría)
+    # Relaciones categóricas-numéricas (media por categoría)
     relaciones = {}
     for cat in cat_cols:
         for num in num_cols:
             relaciones[f"{cat}__vs__{num}"] = df.groupby(cat)[num].mean().to_dict()
-    contenido["relaciones_cat_num"] = relaciones
+    contenido["cat_num_relations"] = relaciones
 
-    # Si hay columna tipo fecha → analizar temporalidad
+    # Temporalidad
     fechas = df.select_dtypes(include=["datetime", "datetimetz"]).columns
-    if len(fechas) > 0:
-        temporalidad = {}
-        for col in fechas:
-            df_temp = df.copy()
-            df_temp["año"] = df[col].dt.year
-            df_temp["mes"] = df[col].dt.month
-            temporalidad[col] = {
-                "conteo_por_año": df_temp["año"].value_counts().sort_index().to_dict(),
-                "conteo_por_mes": df_temp["mes"].value_counts().sort_index().to_dict(),
-            }
-        contenido["temporalidad"] = temporalidad
+    temporalidad = {}
+    for col in fechas:
+        df_temp = df.copy()
+        df_temp["year"] = df[col].dt.year
+        df_temp["month"] = df[col].dt.month
+        temporalidad[col] = {
+            "count_by_year": df_temp["year"].value_counts().sort_index().to_dict(),
+            "count_by_month": df_temp["month"].value_counts().sort_index().to_dict()
+        }
+    if temporalidad:
+        contenido["temporal_analysis"] = temporalidad
 
     return contenido
 
 # =========================
-# AGENTE DE ANÁLISIS
+# GENERAR INFORME CON IA
 # =========================
 def analizar_matriz(fuente, descripcion_db="", temperature=0.3):
     df = cargar_matriz(fuente)
@@ -151,46 +169,13 @@ def analizar_matriz(fuente, descripcion_db="", temperature=0.3):
     prompt_template = PromptTemplate(
         input_variables=["descripcion_db", "perfil", "contenido"],
         template="""
-Eres un experto senior en análisis de datos estratégicos, minería de patrones complejos e inteligencia de negocio.
-Tu misión no es solo describir los datos, sino extraer inferencias útiles, hipótesis contrafactuales, narrativas con ejemplos concretos y propuestas de valor aplicables.
+Eres un experto en análisis de datos estratégicos. Analiza el siguiente dataset:
 
-Dispones de:
-- Descripción de la base de datos: {descripcion_db}
-- Perfil técnico de la matriz: {perfil}
-- Resumen de contenido y patrones básicos: {contenido}
+Descripción: {descripcion_db}
+Perfil técnico: {perfil}
+Contenido y patrones: {contenido}
 
-Genera un informe extremadamente detallado, con un tono consultivo y narrativo siguiendo la estructura:
-
-1 Hallazgos clave
-   Resumen ejecutivo con los descubrimientos más importantes
-   Incluye tanto hallazgos técnicos como estratégicos
-   Señala también qué no está en los datos pero podría ser relevante
-   Aporta ejemplos ilustrativos de casos representativos
-
-2 Calidad de datos y problemas detectados
-   Análisis profundo de valores nulos, duplicados, inconsistencias y errores posibles
-   Impacto de estos problemas en el análisis
-   Explica qué nuevos datos sería útil recolectar
-
-3 Patrones, tendencias y correlaciones
-   Busca tendencias temporales como picos, caídas, estacionalidad o ciclos
-   Identifica correlaciones relevantes entre variables numéricas y categóricas
-   Detecta interacciones entre variables que podrían no ser evidentes
-   Explica posibles causas detrás de los patrones observados
-   Si hay fechas, analiza estacionalidad y eventos atípicos
-
-4 Anomalías y outliers relevantes
-   Ejemplos específicos con valores concretos
-   Posibles explicaciones o hipótesis
-
-5 Riesgos y oportunidades de negocio
-   Interpreta los hallazgos con un enfoque práctico
-   Incluye escenarios prospectivos
-
-6 Recomendaciones estratégicas y operativas
-   Sugerencias accionables basadas en los datos
-   Propón acciones experimentales
-   Agrega recomendaciones para capturar valor más allá de lo explícito en los datos
+Genera un informe detallado con hallazgos clave, calidad de datos, tendencias, anomalías, riesgos y recomendaciones.
 """
     )
 
@@ -221,4 +206,4 @@ if __name__ == "__main__":
     descripcion_db = sys.argv[2]
 
     resultado = analizar_matriz(archivo, descripcion_db=descripcion_db)
-    print(resultado["informe"])
+    print(json.dumps(resultado, indent=2, ensure_ascii=False))
