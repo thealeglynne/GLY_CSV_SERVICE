@@ -91,8 +91,10 @@ def analisis_contenido(df, sample_size=20):
             "desviacion": float(df[col].std()),
             "q25": float(df[col].quantile(0.25)),
             "q75": float(df[col].quantile(0.75)),
-            "outliers_estimados": int(((df[col] < (df[col].quantile(0.25) - 1.5*df[col].std())) | 
-                                       (df[col] > (df[col].quantile(0.75) + 1.5*df[col].std()))).sum())
+            "outliers_estimados": int(
+                ((df[col] < (df[col].quantile(0.25) - 1.5*df[col].std())) | 
+                 (df[col] > (df[col].quantile(0.75) + 1.5*df[col].std()))).sum()
+            )
         }
     contenido["distribuciones_numericas"] = distribuciones
 
@@ -147,8 +149,8 @@ def analizar_matriz(fuente, descripcion_db="", temperature=0.3):
     resumen_contenido = json.dumps(contenido, indent=2, ensure_ascii=False)
 
     prompt_template = PromptTemplate(
-    input_variables=["descripcion_db", "perfil", "contenido"],
-    template="""
+        input_variables=["descripcion_db", "perfil", "contenido"],
+        template="""
 Eres un experto senior en análisis de datos estratégicos, minería de patrones complejos e inteligencia de negocio.
 Tu misión no es solo describir los datos, sino extraer inferencias útiles, hipótesis contrafactuales, narrativas con ejemplos concretos y propuestas de valor aplicables.
 
@@ -159,53 +161,38 @@ Dispones de:
 
 Genera un informe extremadamente detallado, con un tono consultivo y narrativo siguiendo la estructura:
 
-1. Hallazgos clave
-   - Resumen ejecutivo con los descubrimientos más importantes.
-   - Incluye tanto hallazgos técnicos como estratégicos.
-   - Señala también qué no está en los datos pero podría ser relevante (vacíos de información).
-   - Aporta ejemplos ilustrativos de casos representativos como microhistorias o perfiles tipo de registros.
+1 Hallazgos clave
+   Resumen ejecutivo con los descubrimientos más importantes
+   Incluye tanto hallazgos técnicos como estratégicos
+   Señala también qué no está en los datos pero podría ser relevante
+   Aporta ejemplos ilustrativos de casos representativos
 
-2. Calidad de datos y problemas detectados
-   - Análisis profundo de valores nulos, duplicados, inconsistencias y errores posibles.
-   - Impacto de estos problemas en el análisis.
-   - Explica qué nuevos datos sería útil recolectar.
-   - Incluye ejemplos numéricos o registros ficticios que evidencien estas limitaciones.
+2 Calidad de datos y problemas detectados
+   Análisis profundo de valores nulos, duplicados, inconsistencias y errores posibles
+   Impacto de estos problemas en el análisis
+   Explica qué nuevos datos sería útil recolectar
 
-3. Patrones, tendencias y correlaciones (Sección Extendida)
-   - Busca tendencias temporales como picos, caídas, estacionalidad o ciclos.
-   - Identifica correlaciones relevantes entre variables numéricas y categóricas.
-   - Detecta interacciones entre variables que podrían no ser evidentes.
-   - Explica posibles causas detrás de los patrones observados.
-   - Si hay fechas, analiza estacionalidad y eventos atípicos.
-   - Si hay datos regionales, compara entre regiones y busca relaciones con otros atributos.
-   - Formula hipótesis fundamentadas basadas en los datos.
-   - Agrega escenarios contrafactuales o simulaciones narrativas con aproximaciones numéricas, por ejemplo: ¿qué pasaría si un factor cambiara, como duplicar un recurso, priorizar un segmento o alterar una política?
-   - Incluye ejemplos concretos de registros que representen estos patrones.
+3 Patrones, tendencias y correlaciones
+   Busca tendencias temporales como picos, caídas, estacionalidad o ciclos
+   Identifica correlaciones relevantes entre variables numéricas y categóricas
+   Detecta interacciones entre variables que podrían no ser evidentes
+   Explica posibles causas detrás de los patrones observados
+   Si hay fechas, analiza estacionalidad y eventos atípicos
 
-4. Anomalías y outliers relevantes
-   - Ejemplos específicos con valores concretos.
-   - Posibles explicaciones o hipótesis.
-   - Reflexiona si esas anomalías pueden representar oportunidades ocultas o amenazas emergentes.
-   - Narra al menos un caso puntual como ejemplo de anomalía.
+4 Anomalías y outliers relevantes
+   Ejemplos específicos con valores concretos
+   Posibles explicaciones o hipótesis
 
-5. Riesgos y oportunidades de negocio
-   - Interpreta los hallazgos con un enfoque práctico.
-   - Incluye escenarios prospectivos, como qué pasaría si la tendencia continúa, se acelera o cambia.
-   - Identifica vacíos de mercado o segmentos poco explorados.
-   - Relaciona patrones con posibles decisiones estratégicas reales.
+5 Riesgos y oportunidades de negocio
+   Interpreta los hallazgos con un enfoque práctico
+   Incluye escenarios prospectivos
 
-6. Recomendaciones estratégicas y operativas
-   - Sugerencias accionables basadas en los datos.
-   - Propón acciones experimentales como pruebas A/B, pilotos o nuevos indicadores de desempeño.
-   - Agrega recomendaciones para capturar valor más allá de lo explícito en los datos.
-   - Cierra con una propuesta visionaria que vaya más allá de la base de datos actual.
-
-NO QUIERO QUE UTILICES CARACTREES ESPECIALES NADA DE NUMERALES ASTERISCOS IGUALES GINES SOLO TECTOY SIGNOS DE PUNTUACION COMAT ETC 
-Responde en formato Markdown con subtítulos claros, ejemplos narrativos, simulaciones cuantitativas aproximadas y un estilo consultivo que combine rigor técnico con narración estratégica.
+6 Recomendaciones estratégicas y operativas
+   Sugerencias accionables basadas en los datos
+   Propón acciones experimentales
+   Agrega recomendaciones para capturar valor más allá de lo explícito en los datos
 """
-)
-
-
+    )
 
     llm = ChatGroq(model_name="llama-3.3-70b-versatile", temperature=temperature, api_key=GROQ_API_KEY)
     prompt = prompt_template.format(
